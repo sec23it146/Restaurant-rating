@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rating Table — Restaurant Rating Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="wrap">
+
+    <header class="masthead">
+      <div class="eyebrow">Model &nbsp;·&nbsp; {{ algorithm or "Random Forest Regression" }}</div>
+      <h1>Rating&nbsp;Table</h1>
+      <p class="sub">Fill in a restaurant's details below the pass, and the kitchen model reads back its predicted rating out of 5.</p>
+      {% if metrics %}
+      <div class="stat-strip">
+        <div class="stat"><span class="stat-num">{{ "%.2f"|format(metrics.r2) }}</span><span class="stat-label">R² score</span></div>
+        <div class="stat"><span class="stat-num">{{ "%.2f"|format(metrics.rmse) }}</span><span class="stat-label">RMSE</span></div>
+        <div class="stat"><span class="stat-num">{{ "%.2f"|format(metrics.mae) }}</span><span class="stat-label">MAE</span></div>
+      </div>
+      {% endif %}
+    </header>
+
+    <div class="layout">
+
+      <form class="ticket" method="POST" action="/predict">
+        <div class="ticket-head">ORDER — RESTAURANT DETAILS</div>
+
+        <label class="field">
+          <span>City</span>
+          <select name="city" required>
+            {% for c in cities %}
+            <option value="{{ c }}" {% if form_data and form_data.get('city')==c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Cuisines</span>
+          <select name="cuisines" required>
+            {% for c in cuisines %}
+            <option value="{{ c }}" {% if form_data and form_data.get('cuisines')==c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+          </select>
+        </label>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Avg. cost for two</span>
+            <input type="number" name="cost" min="0" step="10"
+                   value="{{ form_data.get('cost') if form_data else cost_min }}" required>
+          </label>
+
+          <label class="field">
+            <span>Price range</span>
+            <select name="price_range" required>
+              {% for p in price_ranges %}
+              <option value="{{ p }}" {% if form_data and form_data.get('price_range')|int==p %}selected{% endif %}>{{ p }} {{ "$" * p }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label class="field">
+            <span>Table booking</span>
+            <select name="table_booking">
+              <option value="no" {% if form_data and form_data.get('table_booking')=='no' %}selected{% endif %}>No</option>
+              <option value="yes" {% if form_data and form_data.get('table_booking')=='yes' %}selected{% endif %}>Yes</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Online delivery</span>
+            <select name="online_delivery">
+              <option value="no" {% if form_data and form_data.get('online_delivery')=='no' %}selected{% endif %}>No</option>
+              <option value="yes" {% if form_data and form_data.get('online_delivery')=='yes' %}selected{% endif %}>Yes</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Votes received</span>
+          <input type="number" name="votes" min="0" step="1"
+                 value="{{ form_data.get('votes') if form_data else 0 }}" required>
+        </label>
+
+        <button type="submit" class="fire-btn">Fire the prediction</button>
+      </form>
+
+      <div class="result-panel">
+        {% if prediction is not none %}
+          <div class="result-card">
+            <div class="result-label">Predicted Aggregate Rating</div>
+            <div class="result-number">{{ "%.2f"|format(prediction) }}<span class="out-of">/5</span></div>
+            <div class="stars">
+              {% set full = prediction | round(0, 'floor') | int %}
+              {% for i in range(5) %}
+                {% if i < full %}★{% else %}☆{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="result-card empty">
+            <div class="ticket-icon">🍽</div>
+            <p>Submit an order on the left to see the predicted rating here.</p>
+          </div>
+        {% endif %}
+
+        <div class="importance-card">
+          <div class="importance-title">3 algorithms compared (R² on test set)</div>
+          <img src="{{ url_for('static', filename='model_comparison.png') }}" alt="Algorithm comparison chart">
+        </div>
+
+        <div class="importance-card">
+          <div class="importance-title">What drives a rating most</div>
+          <img src="{{ url_for('static', filename='feature_importance.png') }}" alt="Feature importance chart">
+        </div>
+      </div>
+
+    </div>
+
+    <footer>
+      Trained on {{ cities|length }}+ cities and {{ cuisines|length }}+ cuisine combinations from the uploaded dataset · Random Forest Regressor, scikit-learn
+    </footer>
+
+  </div>
+
+</body>
+</html>
